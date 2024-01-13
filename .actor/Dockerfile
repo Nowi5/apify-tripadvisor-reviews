@@ -36,3 +36,5 @@ COPY . ./
 # Specify how to launch the source code of your actor.
 # By default, the "python3 -m src" command is run
 CMD ["python3", "-m", "src"]
+
+RUN python3 ./src/webdriver_install.py

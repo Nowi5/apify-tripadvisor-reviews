@@ -18,10 +18,12 @@ from apify import Actor
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import TimeoutException
+from webdriver_manager.chrome import ChromeDriverManager
 
 # To run this Actor locally, you need to have the Selenium Chromedriver installed.
 # https://www.selenium.dev/documentation/webdriver/getting_started/install_drivers/
@@ -230,6 +232,7 @@ def check_captcha(driver):
 def get_driver(proxy_port = 8080):
     # Launch a new Selenium Chrome WebDriver
     Actor.log.info('Launching Chrome WebDriver...')
+    service = Service(ChromeDriverManager().install())
     chrome_options = ChromeOptions()
     #    if Actor.config.headless:
     #        chrome_options.add_argument('--headless')
@@ -240,7 +243,7 @@ def get_driver(proxy_port = 8080):
     chrome_options.add_argument(f"--proxy-server={PROXY}")
     chrome_options.add_argument('--ignore-certificate-errors')
     chrome_options.add_argument('--ignore-ssl-errors')
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
 
     return driver
 
