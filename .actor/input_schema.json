@@ -1,14 +1,14 @@
 {
-    "title": "Python Selenium Scraper",
+    "title": "Python Selenium Scraper for Tripadvisor Reviews",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
         "urls": {
             "title": "URLs",
             "type": "array",
-            "description": "URLs of resturants",
+            "description": "URLs of First Page of Reviews for a given location",
             "prefill": [
-                { "url": "https://www.foodpanda.com.kh/en/restaurant/g4oa/" }
+                { "url": "https://www.tripadvisor.com/ShowUserReviews-g1-d8729116-r933887478-Malaysia_Airlines-World.html" }
             ],
             "editor": "requestListSources"
         }

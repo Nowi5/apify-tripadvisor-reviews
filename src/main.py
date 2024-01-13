@@ -29,7 +29,7 @@ from selenium.common.exceptions import TimeoutException
 
 # Parameters
 
-LOOP_MAX = 50
+LOOP_MAX = 40
 SCROLL_INCREMENT = 600  # This value might need adjusting depending on the website
 
 STORAGE_PATH = "storage"
@@ -112,19 +112,29 @@ async def process_website(driver, url):
     time.sleep(3)
     keep_going = True
 
-    while keep_going:
+    actor_input = await Actor.get_input() or {}
+    max_pages = actor_input.get('max_pages', 3)
+    pages_processed = 0
+
+    while keep_going and pages_processed < max_pages:
         process_page(driver)
+        pages_processed += 1
 
         # Check for next page
-        try:
-            scroll_to_bottom(driver)
-            next_button = driver.find_element(By.CSS_SELECTOR, 'a.nav.next')
-            next_button.click()
-        except NoSuchElementException:
-            print("Next page button not found.")
+        if pages_processed < max_pages:  # Only look for next page if the max limit hasn't been reached
+            try:
+                scroll_to_bottom(driver)
+                next_button = driver.find_element(By.CSS_SELECTOR, 'a.nav.next')
+                next_button.click()
+            except NoSuchElementException:
+                Actor.log.info("Next page button not found.")
+                keep_going = False
+        else:
+            Actor.log.info("Reached the maximum number of pages to process.")
             keep_going = False
 
     return
+
 
 
 def process_page(driver):  

@@ -12,16 +12,13 @@ A template example built with Selenium and headless Chrome browser to scrape a w
 ## How it works
 This code is a Python script that uses Selenium to scrape web pages and extract data from them. Here's a brief overview of how it works:
 
-- The script reads the input data from the Actor instance, which is expected to contain a `start_urls` key with a list of URLs to scrape and a `max_depth` key with the maximum depth of nested links to follow.
-- The script enqueues the starting URLs in the default request queue and sets their depth to 1.
+- The script reads the input data from the Actor instance, which is expected to contain a `start_urls` key with a list of URLs to scrape.
 - The script processes the requests in the queue one by one, fetching the URL using requests and parsing it using Selenium.
-- If the depth of the current request is less than the maximum depth, the script looks for nested links in the page and enqueues their targets in the request queue with an incremented depth.
 - The script extracts the desired data from the page (in this case, titles of each page) and pushes them to the default dataset using the `push_data` method of the Actor instance.
 - The script catches any exceptions that occur during the scraping process and logs an error message using the `Actor.log.exception` method.
 
 
 ## Getting started
-
 For complete information [see this article](https://docs.apify.com/platform/actors/development#build-actor-locally). To run the actor use the following command:
 
 ```
