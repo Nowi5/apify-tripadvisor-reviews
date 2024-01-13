@@ -1,0 +1,14 @@
+# configurations
+.idea
+
+# crawlee and apify storage folders
+apify_storage
+crawlee_storage
+storage/datasets
+storage/key_value_stores
+
+# installed files
+.venv
+
+# git folder
+.git

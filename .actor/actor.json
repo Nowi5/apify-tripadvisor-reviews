@@ -1,0 +1,12 @@
+{
+	"actorSpecification": 1,
+	"name": "Tripadvisor Review Scaper",
+	"title": "Tripadvisor Review Scaper",
+	"description": "Scrapes reviews from a tripadvisor e.g https://www.tripadvisor.com/Airline_Review using Selenium.",
+	"version": "0.0",
+	"meta": {
+		"templateId": "python-selenium"
+	},
+	"input": "./input_schema.json",
+	"dockerfile": "./Dockerfile"
+}
