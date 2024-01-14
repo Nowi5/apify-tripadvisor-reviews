@@ -83,6 +83,9 @@ async def main():
             stop_mitmproxy(mitm_process)
             await process_capture(unique_id)
             clean_files()
+        
+        Actor.log.info(f'Processing done ...')
+        clean_files()
 
 def ensure_directory_exists(directory: str):
     if directory and not os.path.exists(directory):
@@ -128,7 +131,13 @@ async def process_website(driver, url):
                 scroll_to_bottom(driver)
                 next_button = driver.find_element(By.CSS_SELECTOR, 'a.nav.next')
                 next_button.click()
+
+                # Wait for the text "Updating list..." to be invisible
+                wait = WebDriverWait(driver, 10)  # 10 is the timeout in seconds
+                wait.until(EC.invisibility_of_element_located((By.XPATH, "//*[contains(text(), 'Updating list...')]")))
+
             except NoSuchElementException:
+                time.sleep(30)
                 Actor.log.info("Next page button not found.")
                 keep_going = False
         else:
@@ -151,6 +160,7 @@ def process_page(driver):
         time.sleep(2)
     except TimeoutException:
         Actor.log.error("The expected element did not appear in the specified time! Closing the driver...")
+        time.sleep(30)
         return       
 
     scroll_to_bottom(driver)
@@ -215,11 +225,15 @@ def scroll_to_bottom(driver):
         driver.execute_script(f"window.scrollTo(0, {current_position + SCROLL_INCREMENT});")
         time.sleep(1)
         new_height = driver.execute_script("return document.body.scrollHeight")
-        if current_position + SCROLL_INCREMENT >= new_height:
+        
+        # Check if we've reached the bottom of the page
+        if current_position == driver.execute_script("return window.pageYOffset;"):
             break
+
         if loop_count >= loop_max:
             break
-        loop_count = loop_count + 1
+
+        loop_count += 1
 
 def check_captcha(driver):
     # TODO: Check for captcha specific for this website Tripadvisor

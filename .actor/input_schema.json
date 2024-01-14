@@ -11,6 +11,12 @@
                 { "url": "https://www.tripadvisor.com/ShowUserReviews-g1-d8729116-r933887478-Malaysia_Airlines-World.html" }
             ],
             "editor": "requestListSources"
+        },
+        "max_pages": {
+            "title": "Max Pages",
+            "type": "integer",
+            "description": "Maximum number of pages to scrape per review URL. Default is 3.",
+            "default": 1
         }
     },
     "required": ["urls"]
