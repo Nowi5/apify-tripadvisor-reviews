@@ -12,4 +12,3 @@ def get_driver():
         print(f"Error initializing the Chrome driver: {e}")
 
 driver = get_driver()
-driver.quit()

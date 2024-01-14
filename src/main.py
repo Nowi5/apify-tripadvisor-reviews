@@ -92,7 +92,6 @@ def ensure_directory_exists(directory: str):
         os.makedirs(directory)
 
 def update_paths(unique_id: str):
-
     PATHS['stdout_log_file']    = os.path.join(PATHS['mitmdump'], f'mitmdump_stdout_{unique_id}.log')
     PATHS['stderr_log_file']    = os.path.join(PATHS['mitmdump'], f'mitmdump_stderr_{unique_id}.log')
     PATHS['captured_file']      = os.path.join(PATHS['captures'], f"captured_requests_{unique_id}.txt")
@@ -111,8 +110,7 @@ def update_paths(unique_id: str):
 
     return PATHS
 
-async def process_website(driver, url):     
-
+async def process_website(driver, url):    
     driver.get(url)
     time.sleep(3)
     keep_going = True
@@ -143,9 +141,7 @@ async def process_website(driver, url):
         else:
             Actor.log.info("Reached the maximum number of pages to process.")
             keep_going = False
-
     return
-
 
 
 def process_page(driver):  
