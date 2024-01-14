@@ -1,3 +1,5 @@
+### MAIN WITH LOCAL PROXY ###
+
 from urllib.parse import urljoin
 
 import requests
@@ -40,6 +42,7 @@ STORAGE_PATH = "storage"
 PATHS = {
     'storage': STORAGE_PATH,
     'captures': os.path.join(STORAGE_PATH, "captures"),
+    'mitmdump': os.path.join(STORAGE_PATH, "mitmdump"),
     'stdout_log_file' : '',
     'stderr_log_file' : '',
     'captured_file': '',
@@ -71,12 +74,17 @@ async def main():
             Actor.log.info("Using unique id: "+str(unique_id))
 
             paths = update_paths(unique_id)
+            # Start the MITM proxy
+            proxy_port = find_open_port()
+            Actor.log.info("Using proxy port: "+str(proxy_port))
+            mitm_process = start_mitmproxy(unique_id, proxy_port)
 
             # Load website
-            driver = await get_driver()
+            driver = get_driver(proxy_port)
             await process_website(driver, url) 
+                    
             driver.quit()
-
+            stop_mitmproxy(mitm_process)
             await process_capture(unique_id)
             clean_files()
         
@@ -88,6 +96,8 @@ def ensure_directory_exists(directory: str):
         os.makedirs(directory)
 
 def update_paths(unique_id: str):
+    PATHS['stdout_log_file']    = os.path.join(PATHS['mitmdump'], f'mitmdump_stdout_{unique_id}.log')
+    PATHS['stderr_log_file']    = os.path.join(PATHS['mitmdump'], f'mitmdump_stderr_{unique_id}.log')
     PATHS['captured_file']      = os.path.join(PATHS['captures'], f"captured_requests_{unique_id}.txt")
     PATHS['error_file']         = os.path.join(PATHS['captures'], f"errors_{unique_id}.txt")
 
@@ -95,6 +105,7 @@ def update_paths(unique_id: str):
     directories_to_ensure = [
         PATHS['storage'],
         PATHS['captures'],
+        PATHS['mitmdump'],
     ]
 
     # Ensure directories exist
@@ -232,17 +243,7 @@ def check_captcha(driver):
         msg = "Captcha detected! Exiting..."
         Actor.log.error(f"An error occurred: {msg}")
 
-async def get_driver():
-
-    # Get Proxies
-    proxy_configuration = await Actor.create_proxy_configuration()
-    proxy_url = await proxy_configuration.new_url()
-
-    proxies = {
-        'http': proxy_url,
-        'https': proxy_url,
-    }
-
+def get_driver(proxy_port = 8080):
     # Launch a new Selenium Chrome WebDriver
     Actor.log.info('Launching Chrome WebDriver...')
     service = Service(ChromeDriverManager().install())
@@ -252,7 +253,10 @@ async def get_driver():
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
 
-    chrome_options.add_argument(f'--proxy-server={proxy_url}')
+    PROXY = "localhost:" + str(proxy_port)
+    chrome_options.add_argument(f"--proxy-server={PROXY}")
+    chrome_options.add_argument('--ignore-certificate-errors')
+    chrome_options.add_argument('--ignore-ssl-errors')
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
     return driver
@@ -288,6 +292,57 @@ def find_open_port(start_port=8080):
                 port += 1
             else:
                 return port
+
+def start_mitmproxy(unique_id, port = 8080):
+    # Ensure data folder exists or create it
+    data_folder = PATHS['storage']
+    if not os.path.exists(data_folder):
+        os.makedirs(data_folder)   
+
+    # Set path to the mitmdump script inside the data folder
+    dump_script_path = os.path.join("src", "save_requests.py")
+
+    # Define paths for stdout and stderr logs
+    stdout_log_path = PATHS['stdout_log_file']
+    stderr_log_path = PATHS['stderr_log_file']
+
+    # Start mitmdump with the specified port
+    with open(stdout_log_path, 'w') as stdout_file, open(stderr_log_path, 'w') as stderr_file:
+        cmd = f'mitmdump --quiet -p {port} -s {dump_script_path} {unique_id} > {stdout_log_path} 2> {stderr_log_path}'
+        process = subprocess.Popen(cmd, shell=True)
+
+    time.sleep(3)
+
+    # Check the stderr log for errors
+    with open(stderr_log_path, 'r') as stderr_file:
+        error_output = stderr_file.read()
+        if "Address already in use" in error_output:
+            raise Exception("Another process is already using the required port. Make sure mitmproxy isn't already running.")
+        elif "Error" in error_output:
+            raise Exception(f"Error starting mitmproxy: {error_output}")
+
+    return process
+
+def stop_mitmproxy(process):
+    try:
+        Actor.log.info("Attempting to terminate mitmproxy...")        
+        if os.name == 'nt':            
+            process.kill()
+        else:
+            process.terminate()
+
+        process.wait(timeout=5)
+        Actor.log.info("Mitmproxy terminated successfully.")
+    except subprocess.TimeoutExpired:
+        Actor.log.warning("Mitmproxy did not terminate within the timeout, attempting to kill it...")
+        try:
+            process.kill()
+            process.wait(timeout=5)  # Wait for the process to be killed
+            Actor.log.info("Mitmproxy killed successfully.")
+        except Exception as e:
+            Actor.log.warning(f"Failed to kill mitmproxy: {e}")
+    except Exception as e:
+        Actor.log.warning(f"Error when stopping mitmproxy: {e}")
 
 def is_valid_json(s):
     try:
