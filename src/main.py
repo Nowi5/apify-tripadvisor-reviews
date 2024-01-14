@@ -145,7 +145,7 @@ async def process_page(driver):
     try:
         # wait to load the page
         element_present = EC.presence_of_element_located((By.ID, 'taplc_location_reviews_list_sur_0'))
-        WebDriverWait(driver, 10).until(element_present)
+        WebDriverWait(driver, 30).until(element_present)
         time.sleep(2)
     except TimeoutException:
         Actor.log.error("The expected element did not appear in the specified time! Closing the driver...")
@@ -192,13 +192,12 @@ def extract_item_data(item_html):
     data['date'] = date_tag['title'] if date_tag else 'Date Not Found'
 
     # Extracting rating-list items and ratings
-    ratings = {}
     for li in soup.select('.rating-list .recommend-answer'):
         description = li.find('div', class_='recommend-description')
         rating = li.find('div', class_='ui_bubble_rating')
         if description and rating:
-            description_key = description.text.replace(' ', '_')
-            ratings[description_key] = rating['class'][1]
+            description_key = 'rating_' + description.text.replace(' ', '_')
+            data[description_key] = rating['class'][1]
 
     # Extracting overall rating
     overall_rating_tag = soup.find('span', class_='ui_bubble_rating')
@@ -214,14 +213,10 @@ def scroll_to_bottom(driver):
         driver.execute_script(f"window.scrollTo(0, {current_position + SCROLL_INCREMENT});")
         time.sleep(1)
         new_height = driver.execute_script("return document.body.scrollHeight")
-        
-        # Check if we've reached the bottom of the page
         if current_position == driver.execute_script("return window.pageYOffset;"):
             break
-
         if loop_count >= loop_max:
             break
-
         loop_count += 1
 
 def check_captcha(driver):
@@ -233,29 +228,43 @@ def check_captcha(driver):
         Actor.log.error(f"An error occurred: {msg}")
 
 async def get_driver():
+    try:
+        proxy_configuration = await Actor.create_proxy_configuration()
+        proxy_url = await proxy_configuration.new_url()
+        Actor.log.info(f'Using proxy: {proxy_url}')
+        # Extracting host and port from the proxy URL
+        match = re.search(r'@(.+)$', proxy_url)
+        if match:
+            extracted_proxy_url = match.group(1)  # This will be 'proxy.apify.com:8000'
+        else:
+            extracted_proxy_url = proxy_url  # Fallback if the regex doesn't find a match
+        proxy_argument = f'--proxy-server={extracted_proxy_url}'
 
-    # Get Proxies
-    proxy_configuration = await Actor.create_proxy_configuration()
-    proxy_url = await proxy_configuration.new_url()
+    except Exception as e:
+        Actor.log.warning(f'Failed to set up proxy, continuing without proxy. Error: {e}')
+        proxy_argument = None
 
-    proxies = {
-        'http': proxy_url,
-        'https': proxy_url,
-    }
-
-    # Launch a new Selenium Chrome WebDriver
     Actor.log.info('Launching Chrome WebDriver...')
     service = Service(ChromeDriverManager().install())
     chrome_options = ChromeOptions()
-    #    if Actor.config.headless:
-    #        chrome_options.add_argument('--headless')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--disable-translate')
+    chrome_options.add_argument('--safebrowsing-disable-auto-update')
 
-    chrome_options.add_argument(f'--proxy-server={proxy_url}')
+    # Add proxy configuration if available
+    if proxy_argument:
+        print("+++++++++++++++++ PROXY ++++++++++++++++++++++") 
+        print(proxy_argument) 
+        chrome_options.add_argument(proxy_argument)
+
+    #if Actor.config.headless:
+        #chrome_options.add_argument('--headless')
+        
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
     return driver
+
 
 async def process_capture(unique_id):
     # No need to process captured file for this scraper
